@@ -8,7 +8,15 @@ const guild_config_schema = new Schema({
     },
     enabled: {
         type: Boolean,
-        required: true
+        required: false
+    },
+    reaction_name: {
+        type: String,
+        required: false
+    },
+    loud: {
+        type: Boolean,
+        required: false
     }
 })
 

@@ -1,56 +1,92 @@
-import { DiscordRequest } from './utils.js';
+import { REST, Routes, Collection } from 'discord.js';
+import config from './config.json' assert { type: "json" };
+import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
+import { is_emoji } from './util.js';
+import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
 
-export async function HasGuildCommands(appId, guildId, commands) {
-    if (guildId === '' || appId === '') return;
+const { APP_ID, GUILD_ID, DISCORD_TOKEN } = config;
 
-    commands.forEach((c) => HasGuildCommand(appId, guildId, c));
+const commands_list = [
+    { command: enable_command, action: enable_bot },
+    { command: disable_command, action: disable_bot },
+    { command: loud_command, action: make_loud },
+    { command: quiet_command, action: make_quiet }, 
+    { command: reaction_command, action: reaction_modal, response: reaction_modal_response }, 
+    { command: pardon_command, action: pardon },
+    { command: arrest_stats_command, action: show_arrest_stats }
+]
+
+const COMMANDS = new Collection()
+for (const {command, action, response} of commands_list) {
+    COMMANDS.set(command.name, action)
+    if (response)
+        COMMANDS.set(response.modal_id, response.action)
 }
 
-// Checks for a command
-async function HasGuildCommand(appId, guildId, command) {
-    // API endpoint to get and post guild commands
-    const endpoint = `applications/${appId}/guilds/${guildId}/commands`;
+export async function RegisterCommands() {
+    const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
 
     try {
-        const res = await DiscordRequest(endpoint, { method: 'GET' });
-        const data = await res.json();
+		console.log(`Started refreshing ${commands_list.length} application (/) commands.`);
 
-        if (data) {
-            const installedNames = data.map((c) => c['name']);
-            // This is just matching on the name, so it's not good for updates
-            if (!installedNames.includes(command['name'])) {
-                console.log(`Installing "${command['name']}"`);
-                InstallGuildCommand(appId, guildId, command);
-            } else {
-                console.log(`"${command['name']}" command already installed`);
-            }
+        const commands_json = commands_list.map(({command}) => command.toJSON());
+		const data = await rest.put(
+			// Routes.applicationGuildCommands(APP_ID, GUILD_ID), // for a specific guild
+            Routes.applicationCommands(APP_ID),
+			{ body: commands_json },
+		);
+
+		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+async function RunCommand(interaction, command_name) {
+    const command = COMMANDS.get(command_name);
+    if (command === undefined || command === null) {
+        console.log(`Could not find command with name ${command_name} from ${interaction}`);
+        return;
+    }
+    command(interaction)
+}
+
+export async function HandleCommand(interaction) {
+    if (interaction.isModalSubmit())
+        return RunCommand(interaction, interaction.customId)
+        
+    if (interaction.isChatInputCommand())
+        return RunCommand(interaction, interaction.commandName)
+}
+
+export async function HandleMessage(message) {
+    if (message.author.bot) return;
+
+    const guild_id = message.guildId;
+    const is_enabled = await enabled(guild_id)
+    if (!is_enabled)
+        return;
+
+    const user_id = message.author.id;
+    const message_content = message.content;
+    const is_all_caps = message_content === message_content.toUpperCase();
+    if (!is_all_caps) {
+        await increment_arrests(guild_id, user_id);
+        let reaction_name = await reaction(message.guildId) ?? '🚨'
+        if (!is_emoji(reaction_name)) {
+            reaction_name = message.guild.emojis.cache.find(emoji => emoji.name === reaction_name) ?? '🚨';
         }
-    } catch (err) {
-        console.error(err);
+        message.react(reaction_name)
+
+        const is_loud = await loud(guild_id);
+        if (is_loud) {
+            const server_name = message.guild.name;
+            const user = message.author.toString();
+            const arrests_count = await arrests(guild_id, user_id)
+            const times = `${arrests_count} ${arrests_count <= 1 ? 'TIME' : 'TIMES'}`
+            message.reply(`${user} STOP! YOU HAVE BROKEN THE LAW'S OF **${server_name}** (${times}) 🚧`)
+        }
     }
 }
 
-// Installs a command
-export async function InstallGuildCommand(appId, guildId, command) {
-    // API endpoint to get and post guild commands
-    const endpoint = `applications/${appId}/guilds/${guildId}/commands`;
-    // install command
-    try {
-        await DiscordRequest(endpoint, { method: 'POST', body: command });
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-export const ENABLE_COMMAND = {
-    name: 'enable',
-    description: `Enable ${process.env.BOT_NAME}`,
-    type: 1
-}
-
-export const DISABLE_COMMAND = {
-    name: 'disable',
-    description: `Disable ${process.env.BOT_NAME}`,
-    type: 1
-}
-
+export default COMMANDS;
