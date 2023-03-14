@@ -1,10 +1,12 @@
 import { REST, Routes, Collection } from 'discord.js';
-import config from './config.json' assert { type: "json" };
+import 'dotenv/config';
 import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
 import { is_emoji } from './util.js';
 import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
 
-const { APP_ID, GUILD_ID, DISCORD_TOKEN } = config;
+const APP_ID = process.env.APP_ID;
+const GUILD_ID = process.env.GUILD_ID;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 const commands_list = [
     { command: enable_command, action: enable_bot },

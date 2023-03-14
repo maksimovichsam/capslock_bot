@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits } from "discord.js"
 import { ConnectDB } from './schema/mongo.js';
 import { RegisterCommands, HandleCommand, HandleMessage } from './commands.js';
-import config from "./config.json" assert { type: "json" };
+import 'dotenv/config';
 
 ConnectDB();
 
@@ -21,4 +21,4 @@ client.once(Events.ClientReady, c => {
 client.on(Events.InteractionCreate, HandleCommand);
 client.on(Events.MessageCreate, HandleMessage)
 
-client.login(config.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN);

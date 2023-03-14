@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
-import config from "../config.json" assert { type: "json" };
+import 'dotenv/config';
 import guild_config_schema from "../schema/guild_config.js"
 
 export async function enabled(guild_id) {
@@ -36,7 +36,7 @@ export async function update_enabled(interaction, on_off) {
     
     const enable_disable = (on_off) ? "enabled" : "disabled"
     const was_on = (is_enabled === on_off) ? "already" : "successfully"
-    const reply_string = `${config.BOT_NAME} has ${was_on} been ${enable_disable}`
+    const reply_string = `${process.env.BOT_NAME} has ${was_on} been ${enable_disable}`
 
     return await interaction.reply(reply_string)
 }
@@ -56,7 +56,7 @@ export async function update_loud(interaction, on_off) {
     })
     
     const volume = (on_off) ? "loud" : "quiet"
-    return interaction.reply(`${config.BOT_NAME} is now ${volume}`)
+    return interaction.reply(`${process.env.BOT_NAME} is now ${volume}`)
 }
 
 export async function update_reaction(interaction, reaction_name) {
@@ -73,39 +73,39 @@ export async function update_reaction(interaction, reaction_name) {
         upsert: true
     })
     
-    return interaction.reply(`${config.BOT_NAME} reaction has been set to :${reaction_name}:`)
+    return interaction.reply(`${process.env.BOT_NAME} reaction has been set to :${reaction_name}:`)
 }
 
 export const enable_bot = async (interaction) => await update_enabled(interaction, true)
 export const enable_command = new SlashCommandBuilder()
     .setName('enable')
-    .setDescription(`Enables ${config.BOT_NAME}`);
+    .setDescription(`Enables ${process.env.BOT_NAME}`);
     
 export const disable_bot = async (interaction) => await update_enabled(interaction, false)
 export const disable_command = new SlashCommandBuilder()
 .setName('disable')
-.setDescription(`Disables ${config.BOT_NAME}`);
+.setDescription(`Disables ${process.env.BOT_NAME}`);
 
 export const make_loud = async (interaction) => await update_loud(interaction, true)
 export const loud_command = new SlashCommandBuilder()
 .setName('loud')
-.setDescription(`Makes ${config.BOT_NAME} yell responses`);
+.setDescription(`Makes ${process.env.BOT_NAME} yell responses`);
 
 export const make_quiet = async (interaction) => await update_loud(interaction, false)
 export const quiet_command = new SlashCommandBuilder()
 .setName('quiet')
-.setDescription(`Makes ${config.BOT_NAME} only react`);
+.setDescription(`Makes ${process.env.BOT_NAME} only react`);
 
 const reaction_modal_id = "reaction-modal";
 const reaction_input_id = "reaction-modal-input";
 export const reaction_modal = async (interaction) => {
     const modal = new ModalBuilder()
         .setCustomId(reaction_modal_id)
-        .setTitle(`${config.BOT_NAME}'s reaction`);
+        .setTitle(`${process.env.BOT_NAME}'s reaction`);
 
     const reaction_input = new TextInputBuilder()
         .setCustomId(reaction_input_id)
-        .setLabel(`What reaction do you want ${config.BOT_NAME} to use?`)
+        .setLabel(`What reaction do you want ${process.env.BOT_NAME} to use?`)
         .setStyle(TextInputStyle.Short);
 
     const action_row = new ActionRowBuilder().addComponents(reaction_input);
@@ -123,4 +123,4 @@ export const reaction_modal_response = {
 
 export const reaction_command = new SlashCommandBuilder()
 .setName('reaction')
-.setDescription(`Updates ${config.BOT_NAME}'s reaction`);
+.setDescription(`Updates ${process.env.BOT_NAME}'s reaction`);
