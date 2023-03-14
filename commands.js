@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
 import { is_emoji } from './util.js';
 import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
+import { IsUserWhitelisted, whitelist_command, whitelist } from './commands/whitelist.js';
 
 const APP_ID = process.env.APP_ID;
 const GUILD_ID = process.env.GUILD_ID;
@@ -15,7 +16,8 @@ const commands_list = [
     { command: quiet_command, action: make_quiet }, 
     { command: reaction_command, action: reaction_modal, response: reaction_modal_response }, 
     { command: pardon_command, action: pardon },
-    { command: arrest_stats_command, action: show_arrest_stats }
+    { command: arrest_stats_command, action: show_arrest_stats },
+    { command: whitelist_command, action: whitelist },
 ]
 
 const COMMANDS = new Collection()
@@ -33,8 +35,8 @@ export async function RegisterCommands() {
 
         const commands_json = commands_list.map(({command}) => command.toJSON());
 		const data = await rest.put(
-			// Routes.applicationGuildCommands(APP_ID, GUILD_ID), // for a specific guild
-            Routes.applicationCommands(APP_ID),
+			Routes.applicationGuildCommands(APP_ID, GUILD_ID), // for a specific guild
+            // Routes.applicationCommands(APP_ID), 
 			{ body: commands_json },
 		);
 
@@ -70,6 +72,10 @@ export async function HandleMessage(message) {
         return;
 
     const user_id = message.author.id;
+    const user_whitelisted = await IsUserWhitelisted(guild_id, user_id);
+    if (user_whitelisted)
+        return;
+
     const message_content = message.content;
     const is_all_caps = message_content === message_content.toUpperCase();
     if (!is_all_caps) {
