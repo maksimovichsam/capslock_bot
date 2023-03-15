@@ -59,11 +59,12 @@ export async function increment_arrests(guild_id, user_id) {
 export async function show_arrest_stats(interaction) {
     const arrestStats = await get_arrest_stats(interaction.guild.id);
 
-    const formattedStats = arrestStats.map((stat) => {
-        const user = interaction.guild.members.cache.get(stat.user_id)?.user;
-        const username = user ? user.tag : 'Unknown User';
-        return { ['User']: username, ['Arrest Count']: stat.arrest_count };
-    });
+    const formattedStats = [];
+    for (let stat of arrestStats) {
+        let user = (await interaction.guild.members.fetch(stat.user_id)).user;
+        const username = user ? `${user.username}#${user.discriminator}` : 'Unknown User';
+        formattedStats.push({ ['User']: username, ['Arrest Count']: stat.arrest_count });
+    }
 
     const headers = ['User', 'Arrest Count'];
     const columnWidths = headers.map((header) => Math.max(header.length, ...formattedStats.map((stat) => `${stat[header]}`.length)));
@@ -78,6 +79,7 @@ export async function show_arrest_stats(interaction) {
 
     interaction.reply(`\`\`\`\n${table}\n\`\`\``);
 }
+
 export const arrest_stats_command = new SlashCommandBuilder()
     .setName('stats')
     .setDescription('Show server arrest stats')
