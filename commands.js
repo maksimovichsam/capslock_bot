@@ -1,7 +1,7 @@
 import { REST, Routes, Collection } from 'discord.js';
 import 'dotenv/config';
 import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
-import { is_emoji } from './util.js';
+import { is_emoji, removeUrlsFromString } from './util.js';
 import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
 import { IsUserWhitelisted, whitelist_command, whitelist } from './commands/whitelist.js';
 
@@ -28,7 +28,7 @@ for (const {command, action, response} of commands_list) {
 }
 
 export async function RegisterCommands() {
-    const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+    const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN); 
 
     try {
 		console.log(`Started refreshing ${commands_list.length} application (/) commands.`);
@@ -76,9 +76,9 @@ export async function HandleMessage(message) {
     if (user_whitelisted)
         return;
 
-    const message_content = message.content;
+    const message_content = removeUrlsFromString(message.content);
     const is_all_caps = message_content === message_content.toUpperCase();
-    if (!is_all_caps) {
+    if (!is_all_caps) { 
         await increment_arrests(guild_id, user_id);
         let reaction_name = await reaction(message.guildId) ?? '🚨'
         if (!is_emoji(reaction_name)) {

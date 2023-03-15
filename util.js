@@ -6,3 +6,12 @@ export function is_emoji(text) {
     const result = text.match(emoji_count_regex)
     return (result === undefined || result === null) ? false : result.length === 1
 }
+
+export function removeUrlsFromString(input) {
+    // Define a regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+  
+    // Replace all matches with an empty string
+    return input.replace(urlRegex, '');
+  }
+  
