@@ -10,8 +10,15 @@ export function is_emoji(text) {
 export function removeUrlsFromString(input) {
     // Define a regular expression to match URLs
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-  
+
     // Replace all matches with an empty string
     return input.replace(urlRegex, '');
-  }
-  
+}
+
+export function removeEmotesFromString(input) {
+    // Define a regular expression to match Discord emotes
+    const emoteRegex = /(:\w+:)/g;
+
+    // Replace all matches with an empty string
+    return input.replace(emoteRegex, '');
+}

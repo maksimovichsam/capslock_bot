@@ -1,7 +1,7 @@
 import { REST, Routes, Collection } from 'discord.js';
 import 'dotenv/config';
 import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
-import { is_emoji, removeUrlsFromString } from './util.js';
+import { is_emoji, removeEmotesFromString, removeUrlsFromString } from './util.js';
 import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
 import { IsUserWhitelisted, whitelist_command, whitelist } from './commands/whitelist.js';
 
@@ -76,7 +76,9 @@ export async function HandleMessage(message) {
     if (user_whitelisted)
         return;
 
-    const message_content = removeUrlsFromString(message.content);
+    let message_content = removeUrlsFromString(message.content);
+    message_content = removeEmotesFromString(message_content)
+    
     const is_all_caps = message_content === message_content.toUpperCase();
     if (!is_all_caps) { 
         await increment_arrests(guild_id, user_id);
