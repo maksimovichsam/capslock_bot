@@ -17,7 +17,7 @@ export function removeUrlsFromString(input) {
 
 export function removeEmotesFromString(input) {
     // Define a regular expression to match Discord emotes
-    const emoteRegex = /(:\w+:)/g;
+    const emoteRegex = /<a?:\w+:\d+>/g;
 
     // Replace all matches with an empty string
     return input.replace(emoteRegex, '');
