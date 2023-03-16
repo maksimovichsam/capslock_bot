@@ -1,6 +1,6 @@
 import { REST, Routes, Collection } from 'discord.js';
 import 'dotenv/config';
-import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud } from './commands/guild_config.js';
+import { enabled, make_quiet, disable_bot, disable_command, enable_bot, enable_command, loud_command, make_loud, quiet_command, reaction, reaction_command, reaction_modal, reaction_modal_response, loud, filterAction, filterCommand, getFilters } from './commands/guild_config.js';
 import { is_emoji, removeEmotesFromString, removeUrlsFromString } from './util.js';
 import { arrests, arrest_stats_command, increment_arrests, pardon, pardon_command, show_arrest_stats } from './commands/arrest_stats.js';
 import { IsUserWhitelisted, whitelist_command, whitelist } from './commands/whitelist.js';
@@ -18,6 +18,7 @@ const commands_list = [
     { command: pardon_command, action: pardon },
     { command: arrest_stats_command, action: show_arrest_stats },
     { command: whitelist_command, action: whitelist },
+    { command: filterCommand, action: filterAction }
 ]
 
 const COMMANDS = new Collection()
@@ -35,8 +36,9 @@ export async function RegisterCommands() {
 
         const commands_json = commands_list.map(({command}) => command.toJSON());
 		const data = await rest.put(
-			Routes.applicationGuildCommands(APP_ID, GUILD_ID), // for a specific guild
-            // Routes.applicationCommands(APP_ID), 
+            (process.env.DEBUG_MODE && process.env.DEBUG_MODE == "TRUE")
+                ? Routes.applicationGuildCommands(APP_ID, GUILD_ID) // for a specific guild
+                : Routes.applicationCommands(APP_ID), 
 			{ body: commands_json },
 		);
 
@@ -47,6 +49,7 @@ export async function RegisterCommands() {
 }
 
 async function RunCommand(interaction, command_name) {
+    console.log(interaction)
     const command = COMMANDS.get(command_name);
     if (command === undefined || command === null) {
         console.log(`Could not find command with name ${command_name} from ${interaction}`);
@@ -56,6 +59,9 @@ async function RunCommand(interaction, command_name) {
 }
 
 export async function HandleCommand(interaction) {
+    const guild_id = interaction.guildId;
+    if (process.env.DEBUG_MODE && process.env.DEBUG_MODE == "TRUE" && guild_id != process.env.GUILD_ID) return;
+
     if (interaction.isModalSubmit())
         return RunCommand(interaction, interaction.customId)
         
@@ -65,8 +71,10 @@ export async function HandleCommand(interaction) {
 
 export async function HandleMessage(message) {
     if (message.author.bot) return;
-
+    
     const guild_id = message.guildId;
+    if (process.env.DEBUG_MODE && process.env.DEBUG_MODE == "TRUE" && guild_id != process.env.GUILD_ID) return;
+
     const is_enabled = await enabled(guild_id)
     if (!is_enabled)
         return;
@@ -76,9 +84,12 @@ export async function HandleMessage(message) {
     if (user_whitelisted)
         return;
 
+    let filters = await getFilters(message.guildId);
     let message_content = removeUrlsFromString(message.content);
     message_content = removeEmotesFromString(message_content)
-    
+    for (const regex of filters)
+        message_content = message_content.replace(regex, '')
+
     const is_all_caps = message_content === message_content.toUpperCase();
     if (!is_all_caps) { 
         await increment_arrests(guild_id, user_id);

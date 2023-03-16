@@ -17,6 +17,10 @@ const guild_config_schema = new Schema({
     loud: {
         type: Boolean,
         required: false
+    },
+    filters: {
+        type: [String],
+        required: false
     }
 })
 

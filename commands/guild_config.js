@@ -26,14 +26,14 @@ export async function update_enabled(interaction, on_off) {
     await guild_config_schema.findOneAndUpdate({
         _id: guild_id
     },
-    {
-        _id: guild_id,
-        enabled: on_off
-    },
-    {
-        upsert: true
-    })
-    
+        {
+            _id: guild_id,
+            enabled: on_off
+        },
+        {
+            upsert: true
+        })
+
     const enable_disable = (on_off) ? "enabled" : "disabled"
     const was_on = (is_enabled === on_off) ? "already" : "successfully"
     const reply_string = `${process.env.BOT_NAME} has ${was_on} been ${enable_disable}`
@@ -47,14 +47,14 @@ export async function update_loud(interaction, on_off) {
     await guild_config_schema.findOneAndUpdate({
         _id: guild_id
     },
-    {
-        _id: guild_id,
-        loud: on_off
-    },
-    {
-        upsert: true
-    })
-    
+        {
+            _id: guild_id,
+            loud: on_off
+        },
+        {
+            upsert: true
+        })
+
     const volume = (on_off) ? "loud" : "quiet"
     return interaction.reply(`${process.env.BOT_NAME} is now ${volume}`)
 }
@@ -65,14 +65,14 @@ export async function update_reaction(interaction, reaction_name) {
     await guild_config_schema.findOneAndUpdate({
         _id: guild_id
     },
-    {
-        _id: guild_id,
-        reaction_name: reaction_name
-    },
-    {
-        upsert: true
-    })
-    
+        {
+            _id: guild_id,
+            reaction_name: reaction_name
+        },
+        {
+            upsert: true
+        })
+
     return interaction.reply(`${process.env.BOT_NAME} reaction has been set to :${reaction_name}:`)
 }
 
@@ -80,21 +80,21 @@ export const enable_bot = async (interaction) => await update_enabled(interactio
 export const enable_command = new SlashCommandBuilder()
     .setName('enable')
     .setDescription(`Enables ${process.env.BOT_NAME}`);
-    
+
 export const disable_bot = async (interaction) => await update_enabled(interaction, false)
 export const disable_command = new SlashCommandBuilder()
-.setName('disable')
-.setDescription(`Disables ${process.env.BOT_NAME}`);
+    .setName('disable')
+    .setDescription(`Disables ${process.env.BOT_NAME}`);
 
 export const make_loud = async (interaction) => await update_loud(interaction, true)
 export const loud_command = new SlashCommandBuilder()
-.setName('loud')
-.setDescription(`Makes ${process.env.BOT_NAME} yell responses`);
+    .setName('loud')
+    .setDescription(`Makes ${process.env.BOT_NAME} yell responses`);
 
 export const make_quiet = async (interaction) => await update_loud(interaction, false)
 export const quiet_command = new SlashCommandBuilder()
-.setName('quiet')
-.setDescription(`Makes ${process.env.BOT_NAME} only react`);
+    .setName('quiet')
+    .setDescription(`Makes ${process.env.BOT_NAME} only react`);
 
 const reaction_modal_id = "reaction-modal";
 const reaction_input_id = "reaction-modal-input";
@@ -122,5 +122,103 @@ export const reaction_modal_response = {
 }
 
 export const reaction_command = new SlashCommandBuilder()
-.setName('reaction')
-.setDescription(`Updates ${process.env.BOT_NAME}'s reaction`);
+    .setName('reaction')
+    .setDescription(`Updates ${process.env.BOT_NAME}'s reaction`);
+
+
+async function addFilter(guildId, filterString) {
+    const guildConfig = await guild_config_schema.findById(guildId)
+    if (guildConfig) {
+        guildConfig.filters.push(filterString);
+        await guildConfig.save();
+    }
+}
+
+async function removeFilter(guildId, filterString) {
+    const guildConfig = await guild_config_schema.findById(guildId);
+    if (guildConfig) {
+        const exists = guildConfig.filters.some(f => f === filterString)
+        if (!exists) return false
+        guildConfig.filters = guildConfig.filters.filter(f => f !== filterString);
+        await guildConfig.save();
+        return true
+    }
+}
+
+export async function getFilters(guildId) {
+    const guildConfig = await guild_config_schema.findById(guildId);
+    if (guildConfig) {
+        return guildConfig.filters;
+    }
+    return null;
+}
+
+async function clearFilters(guildId) {
+    await guild_config_schema.findByIdAndUpdate(
+        guildId,
+        { filters: [] },
+        { new: true, upsert: true }
+    )
+}
+
+export const filterAction = async (interaction) => {
+    const { commandName, options } = interaction;
+
+    if (commandName === 'filter') {
+        const subCommand = options.getSubcommand();
+
+        if (subCommand === 'add') {
+            const regex = options.getString('regex');
+            await addFilter(interaction.guildId, regex);
+            await interaction.reply(`Filter \`${regex}\` added.`);
+        }
+        else if (subCommand === 'delete') {
+            const regex = options.getString('regex');
+            const success = await removeFilter(interaction.guildId, regex);
+            if (success === true)
+                await interaction.reply(`Filter \`${regex}\` removed.`);
+            else if (success === false)
+                await interaction.reply(`Filter \`${regex}\` does not exist.`);
+            else
+                await interaction.reply(`Filter \`${regex}\` was not removed for an unknown error.`);
+        }
+        else if (subCommand === 'clear') {
+            await clearFilters(interaction.guildId);
+            await interaction.reply(`All filters cleared.`);
+        }
+        else if (subCommand === 'list') {
+            const filters = await getFilters(interaction.guildId);
+            const filterList = filters.length != 0 ? filters.join('\n') : 'No filters set.';
+            await interaction.reply(`Filters:\n\`\`\`\n${filterList}\n\`\`\``);
+        }
+    }
+}
+
+export const filterCommand = new SlashCommandBuilder()
+    .setName('filter')
+    .setDescription('Add or delete a regex filter for your guild.')
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('add')
+            .setDescription('Add a regex filter for your guild.')
+            .addStringOption(option =>
+                option.setName('regex')
+                    .setDescription('The regex filter to add.')
+                    .setRequired(true)))
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('delete')
+            .setDescription('Delete a regex filter from your guild.')
+            .addStringOption(option =>
+                option.setName('regex')
+                    .setDescription('The regex to delete.')
+                    .setRequired(true)))
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('list')
+            .setDescription('List current filters within your guild.'))
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('clear')
+            .setDescription('Remove all filters from your guild.'))
+
