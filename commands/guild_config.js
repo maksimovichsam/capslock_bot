@@ -222,3 +222,104 @@ export const filterCommand = new SlashCommandBuilder()
             .setName('clear')
             .setDescription('Remove all filters from your guild.'))
 
+
+async function setCriminalThreshold(guildId, threshold) {
+    try {
+        const update = {
+            criminal_threshold: threshold
+        };
+        await guild_config_schema.findByIdAndUpdate(guildId, update, { upsert: true });
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+export async function getCriminalThreshold(guildId) {
+    try {
+        const result = await guild_config_schema.findById(guildId);
+        if (result) {
+            return result.criminal_threshold;
+        }
+        return null;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+async function setCriminalRole(guildId, roleId) {
+    try {
+        const update = {
+            criminal_role: roleId
+        };
+        const result = await guild_config_schema.findByIdAndUpdate(guildId, update, { upsert: true });
+        if (result) {
+            return result.criminal_role;
+        }
+        return null;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+export async function getCriminalRole(guildId) {
+    try {
+        const result = await guild_config_schema.findById(guildId);
+        console.log(guildId, result)
+        if (result) {
+            return result.criminal_role;
+        }
+        return null;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+export const criminalAction = async (interaction) => {
+    const { commandName, options } = interaction;
+
+    if (commandName === 'criminal') {
+        const subCommand = options.getSubcommand();
+
+        if (subCommand === 'threshold') {
+            const threshold = options.getNumber('threshold');
+            return setCriminalThreshold(interaction.guild.id, threshold)
+                .then(() => interaction.reply(`Criminal threshold set to ${threshold}`))
+                .catch(() => interaction.reply('Failed to set criminal threshold.'))
+        }
+        else if (subCommand === 'role') {
+            const role_name = options.getString('role')
+            const guild_roles = await interaction.guild.roles.fetch();
+            const role_exists = guild_roles.some(role => role.name === role_name)
+            if (!role_exists)
+                return await interaction.reply(`Sorry, the role '${role_name}' does not exist in this guild.`)
+            return setCriminalRole(interaction.guild.id, role_name)
+                .then(() => interaction.reply(`Criminal role has been set to '${role_name}'`))
+                .catch(() => interaction.reply(`Failed to set the criminal role`))
+        }
+    }
+}
+
+export const criminalCommand = new SlashCommandBuilder()
+    .setName('criminal')
+    .setDescription('Modify criminal settings.')
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('threshold')
+            .setDescription('Set the arrest threshold to be a criminal in this guild.')
+            .addNumberOption(option =>
+                option.setName('threshold')
+                    .setDescription('The number of arrests to be a criminal.')
+                    .setRequired(true)))
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('role')
+            .setDescription('Set the Discord role to attach to criminals')
+            .addStringOption(option =>
+                option.setName('role')
+                    .setDescription('The name of the role that criminals will receive')
+                    .setRequired(true)))
+

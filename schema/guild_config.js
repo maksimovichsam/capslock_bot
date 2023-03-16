@@ -21,6 +21,15 @@ const guild_config_schema = new Schema({
     filters: {
         type: [String],
         required: false
+    },
+    criminal_threshold: {
+        type: Number,
+        required: false,
+        default: 10
+    },
+    criminal_role: {
+        type: String,
+        required: false
     }
 })
 
